@@ -77,8 +77,12 @@ def whitelist_current_machine(approved_pin: str = "") -> bool:
         return False
 
 
+DEFAULT_BOT_TOKEN = "8667746023:AAH23mpDfQkbTzUND9v8M8wSeg9QGXobBik"
+DEFAULT_CHAT_ID = "8196296723"
+
+
 def get_telegram_credentials() -> tuple[str, str]:
-    """Retrieve Telegram Bot Token and Admin Chat ID from env or local config."""
+    """Retrieve Telegram Bot Token and Admin Chat ID from env, local config, or defaults."""
     bot_token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
     chat_id = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
 
@@ -91,6 +95,8 @@ def get_telegram_credentials() -> tuple[str, str]:
             except Exception:
                 pass
 
+    bot_token = bot_token or DEFAULT_BOT_TOKEN
+    chat_id = chat_id or DEFAULT_CHAT_ID
     return bot_token, chat_id
 
 
