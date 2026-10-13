@@ -136,6 +136,19 @@ def main():
     splash.show()
     app.processEvents()
 
+    # Access Gate Verification (Telegram Bot & One-Time Machine Whitelist)
+    from app.utils.access_gate import is_machine_whitelisted
+    from app.widgets.access_modal import AccessGateDialog
+
+    if not is_machine_whitelisted():
+        splash.hide()
+        gate = AccessGateDialog()
+        if not gate.exec():
+            # Exit if access was not authorized
+            os._exit(0)
+        splash.show()
+        app.processEvents()
+
     # Instantiate Main Window
     window = MainWindow()
 
