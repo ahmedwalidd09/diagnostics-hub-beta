@@ -1,0 +1,48 @@
+{
+  "names": [
+    "svchost_fake.exe",
+    "csrss_copy.exe",
+    "lsass_fake.exe",
+    "services32.exe",
+    "winlogon_patch.exe",
+    "explorer_updater.exe",
+    "taskhostw_fake.exe",
+    "system_idle.exe",
+    "spoolsv_update.exe",
+    "smss32.exe",
+    "conhost_miner.exe",
+    "xmrig.exe",
+    "xmrig-daemon.exe",
+    "minerd.exe",
+    "ethminer.exe",
+    "wannacry.exe",
+    "darkcomet.exe",
+    "njrat.exe",
+    "remcos.exe",
+    "nanocore.exe",
+    "agenttesla.exe",
+    "redline.exe",
+    "vidar.exe",
+    "raccoon.exe",
+    "stealc.exe"
+  ],
+  "hashes": {
+    "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855": "ZeroByteDummyPayload",
+    "44d88612fea8a8f36de82e1278abb02f": "EICAR-Standard-AV-Test-MD5",
+    "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f": "EICAR-Standard-AV-Test-SHA256",
+    "ed01ebfbc9eb5bbea545af4d01bf5f1071661840480439c6e5babe8e080e41aa": "WannaCry-Ransomware-Variant",
+    "739f50cf0f7936a7a0b5a6fa58dfc919d7b4db1bfa707572d4c06206d21c0ad9": "Emotet-Dropper-Sample",
+    "84c82835a5d21bbcf75a61706d8ab549": "Mimikatz-Generic-Hash",
+    "a2569f727823e20eecba73d57f59b3cf0cb484bf8476d06283d6a2f321481d22": "AsyncRAT-Client-Sample"
+  },
+  "suspicious_ips": [
+    "185.220.101.5",
+    "185.220.101.6",
+    "194.26.29.112",
+    "45.154.255.88",
+    "193.106.191.162",
+    "91.240.118.172",
+    "194.135.25.79",
+    "45.142.214.218"
+  ]
+}

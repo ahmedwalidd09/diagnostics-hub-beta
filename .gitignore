@@ -1,0 +1,35 @@
+# Python byte code & caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyd
+
+# Environments
+.venv/
+env/
+venv/
+ENV/
+
+# Build artifacts & PyInstaller
+build/
+dist/
+*.spec.bak
+
+# App runtime data & local databases
+*.db
+*.sqlite3
+data.db
+settings.json
+*.log
+
+# Testing & scratch files
+scratch_test_*.py
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE configs
+.idea/
+.vscode/
+*.swp
+*.swo

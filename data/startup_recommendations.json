@@ -1,0 +1,128 @@
+[
+  {
+    "name": "Spotify",
+    "essential": false,
+    "impact": "Medium",
+    "recommendation": "Safe to disable. Spotify does not need to start with Windows."
+  },
+  {
+    "name": "Discord",
+    "essential": false,
+    "impact": "High",
+    "recommendation": "Safe to disable. Discord can be opened manually when needed."
+  },
+  {
+    "name": "Steam",
+    "essential": false,
+    "impact": "High",
+    "recommendation": "Safe to disable. Steam takes significant boot resources."
+  },
+  {
+    "name": "EpicGamesLauncher",
+    "essential": false,
+    "impact": "High",
+    "recommendation": "Safe to disable. Launch games launcher on demand."
+  },
+  {
+    "name": "Adobe Creative Cloud",
+    "essential": false,
+    "impact": "High",
+    "recommendation": "Safe to disable. Multiple background updaters slow down boot."
+  },
+  {
+    "name": "OneDrive",
+    "essential": false,
+    "impact": "Medium",
+    "recommendation": "Safe to disable if you do not use Microsoft Cloud sync continuously."
+  },
+  {
+    "name": "Skype",
+    "essential": false,
+    "impact": "Medium",
+    "recommendation": "Safe to disable unless required immediately at login."
+  },
+  {
+    "name": "Cortana",
+    "essential": false,
+    "impact": "Low",
+    "recommendation": "Safe to disable. Not needed for core Windows functions."
+  },
+  {
+    "name": "Microsoft Teams",
+    "essential": false,
+    "impact": "High",
+    "recommendation": "Optional. High memory consumption during Windows boot."
+  },
+  {
+    "name": "CCleaner",
+    "essential": false,
+    "impact": "Medium",
+    "recommendation": "Safe to disable. Background monitoring is redundant."
+  },
+  {
+    "name": "Dropbox",
+    "essential": false,
+    "impact": "Medium",
+    "recommendation": "Safe to disable if you only sync files occasionally."
+  },
+  {
+    "name": "Google Drive",
+    "essential": false,
+    "impact": "Medium",
+    "recommendation": "Safe to disable if not actively syncing files at startup."
+  },
+  {
+    "name": "Razer Synapse",
+    "essential": false,
+    "impact": "High",
+    "recommendation": "Optional. Lighting profiles work onboard, safe to disable if not switching macros."
+  },
+  {
+    "name": "Logitech G HUB",
+    "essential": false,
+    "impact": "Medium",
+    "recommendation": "Optional. Peripheral manager adds noticeable delay to startup."
+  },
+  {
+    "name": "Battle.net",
+    "essential": false,
+    "impact": "High",
+    "recommendation": "Safe to disable. Start games manually."
+  },
+  {
+    "name": "utorrent",
+    "essential": false,
+    "impact": "Medium",
+    "recommendation": "Safe to disable. Torrent clients consume network and disk IO at startup."
+  },
+  {
+    "name": "qbittorrent",
+    "essential": false,
+    "impact": "Medium",
+    "recommendation": "Safe to disable. Launch when downloading only."
+  },
+  {
+    "name": "Zoom",
+    "essential": false,
+    "impact": "Medium",
+    "recommendation": "Safe to disable. Run when joining meetings."
+  },
+  {
+    "name": "SecurityHealthSystray",
+    "essential": true,
+    "impact": "Low",
+    "recommendation": "Keep enabled. Windows Security notification tray."
+  },
+  {
+    "name": "Windows Defender",
+    "essential": true,
+    "impact": "Medium",
+    "recommendation": "Keep enabled. Crucial antivirus protection."
+  },
+  {
+    "name": "Realtek HD Audio",
+    "essential": true,
+    "impact": "Low",
+    "recommendation": "Recommended to keep for headphone jack auto-detection."
+  }
+]

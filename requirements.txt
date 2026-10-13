@@ -1,0 +1,9 @@
+psutil>=5.9.0
+PyQt6>=6.5.0
+GPUtil>=1.4.0
+WMI>=1.5.1
+requests>=2.31.0
+pyqtgraph>=0.13.0
+reportlab>=4.0.0
+pywin32>=306
+py-cpuinfo>=9.0.0
