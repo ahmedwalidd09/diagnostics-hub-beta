@@ -10,15 +10,15 @@ from app.widgets.severity_badge import SeverityBadge
 from app.workers.network_monitor_worker import NetworkMonitorWorker, parse_dns_cache, flush_dns_cache
 from app.constants import COLOR_BG_CARD, COLOR_BORDER
 
-# Configure pyqtgraph for cyber dark theme
-pg.setConfigOption('background', '#0d1017')
-pg.setConfigOption('foreground', '#828d9e')
+# Configure pyqtgraph for clean workstation dark theme
+pg.setConfigOption('background', '#161922')
+pg.setConfigOption('foreground', '#94a3b8')
 pg.setConfigOption('antialias', True)
 
-_BRUSH_ESTABLISHED = QBrush(QColor("#00d2ff"))
-_BRUSH_LISTEN = QBrush(QColor("#ff9f1a"))
-_BRUSH_OTHER = QBrush(QColor("#828d9e"))
-_BRUSH_RED = QBrush(QColor("#ff2a51"))
+_BRUSH_ESTABLISHED = QBrush(QColor("#3b82f6"))
+_BRUSH_LISTEN = QBrush(QColor("#f59e0b"))
+_BRUSH_OTHER = QBrush(QColor("#94a3b8"))
+_BRUSH_RED = QBrush(QColor("#ef4444"))
 
 
 class NetworkMonitorPage(QWidget):
@@ -77,9 +77,9 @@ class NetworkMonitorPage(QWidget):
         c_header.addStretch()
 
         self.legend_down = QLabel("● Download: 0.0 KB/s")
-        self.legend_down.setStyleSheet("color: #00d2ff; font-weight: 700; font-size: 12px;")
+        self.legend_down.setStyleSheet("color: #3b82f6; font-weight: 600; font-size: 12px;")
         self.legend_up = QLabel("● Upload: 0.0 KB/s")
-        self.legend_up.setStyleSheet("color: #ff2a51; font-weight: 700; font-size: 12px;")
+        self.legend_up.setStyleSheet("color: #10b981; font-weight: 600; font-size: 12px;")
         c_header.addWidget(self.legend_down)
         c_header.addWidget(self.legend_up)
         c_layout.addLayout(c_header)
@@ -90,8 +90,8 @@ class NetworkMonitorPage(QWidget):
         self.plot_widget.setLabel('left', 'KB/s')
         self.plot_widget.getAxis('bottom').setStyle(showValues=False)
 
-        self.down_curve = self.plot_widget.plot(pen=pg.mkPen(color='#00d2ff', width=2), name="Download")
-        self.up_curve = self.plot_widget.plot(pen=pg.mkPen(color='#ff2a51', width=2), name="Upload")
+        self.down_curve = self.plot_widget.plot(pen=pg.mkPen(color='#3b82f6', width=2), name="Download")
+        self.up_curve = self.plot_widget.plot(pen=pg.mkPen(color='#10b981', width=2), name="Upload")
         c_layout.addWidget(self.plot_widget)
 
         layout.addWidget(chart_card)

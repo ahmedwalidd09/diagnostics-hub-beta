@@ -25,10 +25,10 @@ class NumericTableWidgetItem(QTableWidgetItem):
         return super().__lt__(other)
 
 
-# Pre-allocated brushes to eliminate repeated allocations in UI render loop (Cyber Palette)
-_BRUSH_HIGH = QBrush(QColor(255, 42, 81, 40))       # Neon Crimson Red
-_BRUSH_SUSPICIOUS = QBrush(QColor(255, 159, 26, 40)) # Cyber Amber
-_BRUSH_SUSPENDED = QBrush(QColor(0, 168, 255, 40))   # Electric Cyber Blue
+# Pre-allocated brushes for status highlighting (Muted Workstation Palette)
+_BRUSH_HIGH = QBrush(QColor(239, 68, 68, 25))         # Muted Red #ef4444
+_BRUSH_SUSPICIOUS = QBrush(QColor(245, 158, 11, 25))   # Muted Amber #f59e0b
+_BRUSH_SUSPENDED = QBrush(QColor(59, 130, 246, 25))    # Slate Blue #3b82f6
 _BRUSH_DEFAULT = QBrush(QColor(0, 0, 0, 0))
 
 
@@ -325,9 +325,9 @@ class ProcessManagerPage(QWidget):
         menu = QMenu(self)
         menu.setStyleSheet("""
             QMenu {
-                background-color: #161b22;
-                color: #e6edf3;
-                border: 1px solid #30363d;
+                background-color: #161922;
+                color: #f1f5f9;
+                border: 1px solid #262a38;
                 border-radius: 6px;
                 padding: 4px;
             }
@@ -336,13 +336,17 @@ class ProcessManagerPage(QWidget):
                 border-radius: 4px;
             }
             QMenu::item:selected {
-                background-color: #1f6feb;
+                background-color: #3b82f6;
                 color: #ffffff;
             }
         """)
 
+        from app.utils.eco_qos import set_process_eco_qos, trim_process_working_set
+
         act_kill = QAction(f"🛑 End Process ({proc_name})", self)
         act_kill_tree = QAction("⚡ End Process Tree", self)
+        act_trim = QAction("🧹 Trim Working Set (Release RAM)", self)
+        act_eco = QAction("🍃 Enable Efficiency Mode (EcoQoS)", self)
         act_suspend = QAction("⏸️ Suspend Process", self)
         act_resume = QAction("▶️ Resume Process", self)
         act_open_loc = QAction("📂 Open File Location", self)
@@ -351,6 +355,8 @@ class ProcessManagerPage(QWidget):
 
         act_kill.triggered.connect(lambda: self._kill_process(pid, proc_name, tree=False))
         act_kill_tree.triggered.connect(lambda: self._kill_process(pid, proc_name, tree=True))
+        act_trim.triggered.connect(lambda: trim_process_working_set(pid))
+        act_eco.triggered.connect(lambda: set_process_eco_qos(pid, True))
         act_suspend.triggered.connect(lambda: self._suspend_process(pid))
         act_resume.triggered.connect(lambda: self._resume_process(pid))
         act_open_loc.triggered.connect(lambda: self._open_file_location(exe_path))
@@ -358,6 +364,17 @@ class ProcessManagerPage(QWidget):
         act_copy_pid.triggered.connect(lambda: QApplication.clipboard().setText(str(pid)))
 
         menu.addAction(act_kill)
+        menu.addAction(act_kill_tree)
+        menu.addSeparator()
+        menu.addAction(act_trim)
+        menu.addAction(act_eco)
+        menu.addSeparator()
+        menu.addAction(act_suspend)
+        menu.addAction(act_resume)
+        menu.addSeparator()
+        menu.addAction(act_open_loc)
+        menu.addAction(act_search)
+        menu.addAction(act_copy_pid)
         menu.addAction(act_kill_tree)
         menu.addSeparator()
         menu.addAction(act_suspend)

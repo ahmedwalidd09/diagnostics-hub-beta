@@ -15,31 +15,31 @@ class SeverityBadge(QLabel):
         if not text:
             if lvl in ("healthy", "good", "low", "clean", "passed"):
                 text = "Healthy" if lvl == "healthy" else level.capitalize()
-            elif lvl in ("warning", "medium", "moderate"):
+            elif lvl in ("warning", "medium", "moderate", "suspicious"):
                 text = "Warning" if lvl == "warning" else level.capitalize()
             else:
                 text = "Critical" if lvl == "critical" else level.capitalize()
 
         if lvl in ("healthy", "good", "low", "clean", "passed"):
-            bg = "rgba(0, 210, 255, 0.12)"
-            color = "#00d2ff"
-            border = "rgba(0, 210, 255, 0.35)"
-            icon = "⚡"
+            bg = "rgba(16, 185, 129, 0.12)"
+            color = "#10b981"
+            border = "rgba(16, 185, 129, 0.3)"
+            icon = "✓"
         elif lvl in ("warning", "medium", "moderate", "suspicious"):
-            bg = "rgba(255, 159, 26, 0.12)"
-            color = "#ff9f1a"
-            border = "rgba(255, 159, 26, 0.4)"
-            icon = "⚠️"
+            bg = "rgba(245, 158, 11, 0.12)"
+            color = "#f59e0b"
+            border = "rgba(245, 158, 11, 0.3)"
+            icon = "!"
         elif lvl in ("info", "blue"):
-            bg = "rgba(0, 168, 255, 0.15)"
-            color = "#00a8ff"
-            border = "rgba(0, 168, 255, 0.4)"
-            icon = "🔷"
+            bg = "rgba(59, 130, 246, 0.12)"
+            color = "#3b82f6"
+            border = "rgba(59, 130, 246, 0.3)"
+            icon = "ℹ"
         else:  # critical, high, malicious
-            bg = "rgba(255, 42, 81, 0.15)"
-            color = "#ff2a51"
-            border = "rgba(255, 42, 81, 0.45)"
-            icon = "🛑"
+            bg = "rgba(239, 68, 68, 0.12)"
+            color = "#ef4444"
+            border = "rgba(239, 68, 68, 0.3)"
+            icon = "✕"
 
         self.setText(f"{icon}  {text}")
         self.setStyleSheet(f"""
@@ -47,10 +47,9 @@ class SeverityBadge(QLabel):
                 background-color: {bg};
                 color: {color};
                 border: 1px solid {border};
-                border-radius: 12px;
-                padding: 3px 12px;
-                font-weight: 700;
+                border-radius: 10px;
+                padding: 2px 10px;
+                font-weight: 600;
                 font-size: 11px;
-                letter-spacing: 0.3px;
             }}
         """)

@@ -1,21 +1,18 @@
 import math
-from PyQt6.QtCore import Qt, QRectF, pyqtProperty, QPropertyAnimation, QEasingCurve, QPointF
-from PyQt6.QtGui import QPainter, QPen, QColor, QFont, QConicalGradient
+from PyQt6.QtCore import Qt, QRectF, pyqtProperty, QPropertyAnimation, QEasingCurve
+from PyQt6.QtGui import QPainter, QPen, QColor, QFont
 from PyQt6.QtWidgets import QWidget
 from app.constants import (
     COLOR_GAUGE_HEALTHY,
     COLOR_GAUGE_WARNING,
-    COLOR_GAUGE_CRITICAL,
-    COLOR_TEXT_PRIMARY,
-    COLOR_TEXT_SECONDARY
+    COLOR_GAUGE_CRITICAL
 )
 
 
 class GaugeWidget(QWidget):
     """
-    Cyber HUD Circular Progress Gauge with radial tech ticks,
-    electric sweep arcs, dynamic cyber neon coloring (Electric Blue to Crimson Red),
-    and smooth hardware-accelerated animations.
+    Clean, minimal circular progress gauge for workstation diagnostics.
+    Provides smooth animated transitions with understated status coloring.
     """
 
     def __init__(
@@ -36,11 +33,10 @@ class GaugeWidget(QWidget):
         self._value = self._min_value
         self._display_value = self._min_value
 
-        self.setMinimumSize(130, 130)
+        self.setMinimumSize(120, 120)
 
-        # Animation setup for smooth transitions
         self._anim = QPropertyAnimation(self, b"display_value")
-        self._anim.setDuration(400)
+        self._anim.setDuration(350)
         self._anim.setEasingCurve(QEasingCurve.Type.OutCubic)
 
     @pyqtProperty(float)
@@ -83,21 +79,19 @@ class GaugeWidget(QWidget):
     def _get_active_color(self) -> QColor:
         val = self._display_value
         if self._invert_colors:
-            # Higher is better (e.g., PC Health Score)
             if val >= 80:
-                return QColor(COLOR_GAUGE_HEALTHY)  # #00a8ff
+                return QColor(COLOR_GAUGE_HEALTHY)
             elif val >= 50:
-                return QColor(COLOR_GAUGE_WARNING)  # #ff9f1a
+                return QColor(COLOR_GAUGE_WARNING)
             else:
-                return QColor(COLOR_GAUGE_CRITICAL) # #ff2a51
+                return QColor(COLOR_GAUGE_CRITICAL)
         else:
-            # Lower is better (e.g., Resource Usage)
             if val < 70:
-                return QColor(COLOR_GAUGE_HEALTHY)  # Electric Blue #00a8ff
+                return QColor(COLOR_GAUGE_HEALTHY)
             elif val < 85:
-                return QColor(COLOR_GAUGE_WARNING)  # Cyber Amber #ff9f1a
+                return QColor(COLOR_GAUGE_WARNING)
             else:
-                return QColor(COLOR_GAUGE_CRITICAL) # Neon Crimson Red #ff2a51
+                return QColor(COLOR_GAUGE_CRITICAL)
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -106,10 +100,8 @@ class GaugeWidget(QWidget):
         width = self.width()
         height = self.height()
         size = min(width, height)
-        cx = width / 2.0
-        cy = height / 2.0
 
-        margin = 14
+        margin = 12
         gauge_rect = QRectF(
             (width - size) / 2 + margin,
             (height - size) / 2 + margin,
@@ -117,22 +109,8 @@ class GaugeWidget(QWidget):
             size - 2 * margin
         )
 
-        # 1. Draw Outer Cyber Tick Marks (HUD Ticks)
-        tick_pen = QPen(QColor(30, 40, 60, 180), 1.5)
-        painter.setPen(tick_pen)
-        radius = (size - 2 * margin) / 2.0 + 4
-        # 14 ticks spanning the 270 degree arc (225 down to -45 degrees)
-        for i in range(15):
-            angle_deg = 225 - (i / 14.0) * 270
-            angle_rad = math.radians(angle_deg)
-            x1 = cx + (radius - 2) * math.cos(angle_rad)
-            y1 = cy - (radius - 2) * math.sin(angle_rad)
-            x2 = cx + (radius + 2) * math.cos(angle_rad)
-            y2 = cy - (radius + 2) * math.sin(angle_rad)
-            painter.drawLine(QPointF(x1, y1), QPointF(x2, y2))
-
-        # 2. Draw Background Obsidian Track
-        track_pen = QPen(QColor(18, 24, 38), 9)
+        # 1. Background Track
+        track_pen = QPen(QColor("#1e222e"), 7)
         track_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
         painter.setPen(track_pen)
 
@@ -140,45 +118,34 @@ class GaugeWidget(QWidget):
         span_angle = -270 * 16
         painter.drawArc(gauge_rect, start_angle, span_angle)
 
-        # 3. Draw Active Glow & Progress Arc
+        # 2. Progress Arc
         ratio = (self._display_value - self._min_value) / (self._max_value - self._min_value or 1.0)
         value_span = int(ratio * span_angle)
 
         if abs(value_span) > 0:
             active_color = self._get_active_color()
-
-            # Outer subtle glow arc
-            glow_color = QColor(active_color)
-            glow_color.setAlpha(40)
-            glow_pen = QPen(glow_color, 14)
-            glow_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-            painter.setPen(glow_pen)
-            painter.drawArc(gauge_rect, start_angle, value_span)
-
-            # Core sharp progress arc
-            active_pen = QPen(active_color, 9)
+            active_pen = QPen(active_color, 7)
             active_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
             painter.setPen(active_pen)
             painter.drawArc(gauge_rect, start_angle, value_span)
 
-        # 4. Draw Center Value Text
-        painter.setPen(QColor("#ffffff"))
-        font_val = QFont("Segoe UI", int(size * 0.17), QFont.Weight.Bold)
+        # 3. Center Value Text
+        painter.setPen(QColor("#f1f5f9"))
+        font_val = QFont("Segoe UI", int(size * 0.17), QFont.Weight.DemiBold)
         painter.setFont(font_val)
 
         val_str = f"{int(round(self._display_value))}{self._unit}"
-        text_rect = QRectF(gauge_rect.x(), gauge_rect.y() + gauge_rect.height() * 0.16,
-                           gauge_rect.width(), gauge_rect.height() * 0.42)
+        text_rect = QRectF(gauge_rect.x(), gauge_rect.y() + gauge_rect.height() * 0.18,
+                           gauge_rect.width(), gauge_rect.height() * 0.40)
         painter.drawText(text_rect, Qt.AlignmentFlag.AlignCenter, val_str)
 
-        # 5. Draw Cyber Title Text below
+        # 4. Title Text Below
         if self._title:
-            painter.setPen(QColor(0, 210, 255))
-            font_title = QFont("Segoe UI", max(8, int(size * 0.08)), QFont.Weight.DemiBold)
-            font_title.setLetterSpacing(QFont.SpacingType.AbsoluteSpacing, 0.5)
+            painter.setPen(QColor("#94a3b8"))
+            font_title = QFont("Segoe UI", max(8, int(size * 0.08)), QFont.Weight.Medium)
             painter.setFont(font_title)
             title_rect = QRectF(gauge_rect.x(), gauge_rect.y() + gauge_rect.height() * 0.58,
                                 gauge_rect.width(), gauge_rect.height() * 0.25)
-            painter.drawText(title_rect, Qt.AlignmentFlag.AlignCenter, self._title.upper())
+            painter.drawText(title_rect, Qt.AlignmentFlag.AlignCenter, self._title)
 
         painter.end()

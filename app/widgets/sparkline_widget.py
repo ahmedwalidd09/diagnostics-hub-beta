@@ -1,5 +1,5 @@
 from collections import deque
-from typing import Sequence, Optional
+from typing import Sequence
 from PyQt6.QtWidgets import QWidget
 from PyQt6.QtCore import Qt, QPointF
 from PyQt6.QtGui import QPainter, QPen, QColor, QPainterPath, QLinearGradient
@@ -7,9 +7,8 @@ from PyQt6.QtGui import QPainter, QPen, QColor, QPainterPath, QLinearGradient
 
 class SparklineWidget(QWidget):
     """
-    Mini inline cyber history visualization.
-    Features subtle gridlines, glowing neon lines (Electric Blue / Crimson),
-    and soft ambient area gradients.
+    Clean inline trend visualization for CPU/Memory metrics.
+    Features subtle gridlines, clean single-stroke curves, and a soft fill area.
     """
 
     def __init__(
@@ -17,8 +16,8 @@ class SparklineWidget(QWidget):
         max_points: int = 60,
         min_val: float = 0.0,
         max_val: float = 100.0,
-        line_color: str = "#00a8ff",
-        fill_alpha: int = 50,
+        line_color: str = "#3b82f6",
+        fill_alpha: int = 35,
         parent=None
     ):
         super().__init__(parent)
@@ -28,7 +27,7 @@ class SparklineWidget(QWidget):
         self.line_color = QColor(line_color)
         self.fill_alpha = fill_alpha
         self.history = deque(maxlen=max_points)
-        self.setMinimumHeight(45)
+        self.setMinimumHeight(38)
 
     def add_point(self, value: float):
         self.history.append(float(value))
@@ -54,8 +53,8 @@ class SparklineWidget(QWidget):
         h = self.height()
         n = len(self.history)
 
-        # 1. Subtle Cyber Gridlines (25%, 50%, 75%)
-        grid_pen = QPen(QColor(22, 28, 42, 120), 1, Qt.PenStyle.DashLine)
+        # 1. Subtle horizontal guidelines
+        grid_pen = QPen(QColor("#262a38"), 1, Qt.PenStyle.DashLine)
         painter.setPen(grid_pen)
         painter.drawLine(0, int(h * 0.25), w, int(h * 0.25))
         painter.drawLine(0, int(h * 0.50), w, int(h * 0.50))
@@ -90,29 +89,19 @@ class SparklineWidget(QWidget):
         gradient.setColorAt(1, c_bottom)
         painter.fillPath(fill_path, gradient)
 
-        # 3. Outer Neon Glow Line
-        glow_pen = QPen(QColor(self.line_color.red(), self.line_color.green(), self.line_color.blue(), 60), 4)
-        glow_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        # 3. Clean stroke curve
+        pen = QPen(self.line_color, 2)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
         line_path = QPainterPath()
         line_path.moveTo(pts[0])
         for pt in pts[1:]:
             line_path.lineTo(pt)
-        painter.strokePath(line_path, glow_pen)
+        painter.strokePath(line_path, pen)
 
-        # 4. Core Crisp Cyber Line
-        core_pen = QPen(self.line_color, 2)
-        core_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-        painter.strokePath(line_path, core_pen)
-
-        # 5. Glowing Latest Indicator Dot
-        if pts:
-            last_pt = pts[-1]
-            # Outer glow
-            painter.setBrush(QColor(self.line_color.red(), self.line_color.green(), self.line_color.blue(), 100))
-            painter.setPen(Qt.PenStyle.NoPen)
-            painter.drawEllipse(last_pt, 6, 6)
-            # Inner white center
-            painter.setBrush(QColor("#ffffff"))
-            painter.drawEllipse(last_pt, 2.5, 2.5)
+        # 4. Leading point node
+        painter.setBrush(QColor("#ffffff"))
+        painter.setPen(QPen(self.line_color, 2))
+        painter.drawEllipse(pts[-1], 2.5, 2.5)
 
         painter.end()

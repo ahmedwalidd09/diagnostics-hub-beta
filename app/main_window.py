@@ -32,28 +32,28 @@ from app.workers.system_monitor_worker import SystemMonitorWorker
 
 class MainWindow(QMainWindow):
     """
-    Main application shell hosting the sidebar navigation,
+    Main workstation application shell hosting the sidebar navigation,
     stacked module pages, admin banner, tray integration, and global toast alerts.
     """
 
     MODULES = [
-        ("🖥️  Dashboard", "System Overview & Vitals"),
-        ("⚡  Why Slow?", "Diagnostic Analyzer & Bottlenecks"),
-        ("📊  Processes", "Advanced Task Manager"),
-        ("🛡️  Virus Scan", "Multi-layered Threat Scanner"),
-        ("🧹  RAM Cleaner", "Memory Optimizer & Leak Detector"),
-        ("🚀  Startup", "Boot Apps & Task Scheduler"),
-        ("🗑️  Disk Cleanup", "Junk Files & Cache Removal"),
-        ("🌐  Network", "Bandwidth Chart & Socket Monitor"),
-        ("⚙️  Settings", "Preferences & Configuration")
+        ("Dashboard", "System Overview & Vitals"),
+        ("Diagnostic Analyzer", "Bottleneck & Slowdown Diagnosis"),
+        ("Process Controller", "Advanced Process Manager"),
+        ("Security Audit", "Threat & Impersonation Scanner"),
+        ("RAM & Memory Map", "Kernel Pools & Interactive Bubble Map"),
+        ("Startup Manager", "Boot Items & Task Scheduler"),
+        ("Disk Cleanup", "Junk Files & Cache Purge"),
+        ("Network Activity", "Bandwidth Chart & Active Sockets"),
+        ("Settings", "Preferences & Persistence")
     ]
 
     def __init__(self):
         super().__init__()
         self.setWindowTitle(f"{APP_NAME} v{APP_VERSION}")
         self.setWindowIcon(QIcon(create_tray_pixmap()))
-        self.resize(1180, 780)
-        self.setMinimumSize(960, 640)
+        self.resize(1200, 800)
+        self.setMinimumSize(980, 660)
 
         self._force_exit = False
         self._init_ui()
@@ -78,18 +78,18 @@ class MainWindow(QMainWindow):
             self.admin_banner.setObjectName("AdminBanner")
             b_layout = QHBoxLayout(self.admin_banner)
             b_layout.setContentsMargins(16, 6, 16, 6)
-            b_lbl = QLabel("⚠️ Some features require admin privileges for full system control (Standby RAM purge, Windows Update cache, Task Scheduler).")
-            b_lbl.setStyleSheet("font-weight: 500; font-size: 12px;")
+            b_lbl = QLabel("Running under standard privileges. Elevate to Administrator for complete Standby memory purge and Task Scheduler control.")
+            b_lbl.setStyleSheet("font-weight: 500; font-size: 12px; color: #f1f5f9;")
             b_layout.addWidget(b_lbl)
             b_layout.addStretch()
 
-            restart_btn = QPushButton("🛡️ Restart as Administrator")
+            restart_btn = QPushButton("Restart as Administrator")
             restart_btn.setStyleSheet("""
-                background-color: #bb8009;
+                background-color: #2563eb;
                 color: #ffffff;
-                font-weight: bold;
+                font-weight: 600;
                 padding: 4px 12px;
-                border: none;
+                border: 1px solid #3b82f6;
                 border-radius: 4px;
             """)
             restart_btn.clicked.connect(self._restart_admin)
@@ -111,13 +111,13 @@ class MainWindow(QMainWindow):
         s_layout.setContentsMargins(8, 16, 8, 16)
         s_layout.setSpacing(10)
 
-        # App Brand Header (Cyber Stealth Styling)
+        # App Brand Header
         brand_box = QVBoxLayout()
         brand_box.setContentsMargins(8, 0, 8, 8)
-        brand_title = QLabel("⚡ DIAGNOSTICS HUB")
-        brand_title.setStyleSheet("font-size: 15px; font-weight: 800; color: #00d2ff; letter-spacing: 0.5px;")
-        brand_sub = QLabel("CYBER STEALTH // x64")
-        brand_sub.setStyleSheet("font-size: 10px; font-weight: 700; color: #ff2a51; letter-spacing: 1px;")
+        brand_title = QLabel("Diagnostics Hub")
+        brand_title.setStyleSheet("font-size: 15px; font-weight: 700; color: #f1f5f9; letter-spacing: 0.3px;")
+        brand_sub = QLabel("Workstation Diagnostics")
+        brand_sub.setStyleSheet("font-size: 11px; font-weight: 500; color: #64748b;")
         brand_box.addWidget(brand_title)
         brand_box.addWidget(brand_sub)
         s_layout.addLayout(brand_box)
@@ -128,7 +128,7 @@ class MainWindow(QMainWindow):
         for title, tooltip in self.MODULES:
             item = QListWidgetItem(title)
             item.setToolTip(tooltip)
-            item.setSizeHint(QSize(200, 38))
+            item.setSizeHint(QSize(200, 36))
             self.nav_list.addItem(item)
 
         self.nav_list.currentRowChanged.connect(self._on_page_changed)
@@ -136,27 +136,27 @@ class MainWindow(QMainWindow):
         s_layout.addStretch()
 
         # Admin Badge indicator in Sidebar footer
-        mode_text = "🛡️ SHIELD: ELEVATED (ADMIN)" if self._is_admin else "⚠️ SHIELD: STANDARD USER"
-        mode_color = "#00d2ff" if self._is_admin else "#ff9f1a"
+        mode_text = "Shield: Elevated (Admin)" if self._is_admin else "Shield: Standard User"
+        mode_color = "#3b82f6" if self._is_admin else "#f59e0b"
         footer_lbl = QLabel(mode_text)
-        footer_lbl.setStyleSheet(f"color: {mode_color}; font-weight: 700; font-size: 10px; padding: 6px; letter-spacing: 0.5px;")
+        footer_lbl.setStyleSheet(f"color: {mode_color}; font-weight: 600; font-size: 11px; padding: 6px;")
         s_layout.addWidget(footer_lbl)
 
         main_content.addWidget(sidebar)
 
-        # 2. Right Workspace Panel (Top HUD Strip + Stacked Content Pages)
+        # 2. Right Workspace Panel (Top Header Strip + Stacked Content Pages)
         right_panel = QWidget()
         right_layout = QVBoxLayout(right_panel)
         right_layout.setContentsMargins(0, 0, 0, 0)
         right_layout.setSpacing(0)
 
-        # Top Cyber HUD Strip
+        # Top Strip
         top_hud = QFrame()
         top_hud.setObjectName("TopHudStrip")
         top_hud.setStyleSheet("""
             QFrame#TopHudStrip {
-                background-color: #040508;
-                border-bottom: 1px solid #141824;
+                background-color: #12151e;
+                border-bottom: 1px solid #262a38;
                 padding: 4px 16px;
             }
         """)
@@ -164,13 +164,13 @@ class MainWindow(QMainWindow):
         th_layout.setContentsMargins(16, 6, 16, 6)
         th_layout.setSpacing(16)
 
-        self.active_module_lbl = QLabel("🖥️  DASHBOARD // SYSTEM OVERVIEW")
-        self.active_module_lbl.setStyleSheet("font-weight: 800; font-size: 13px; color: #00d2ff; letter-spacing: 0.5px;")
+        self.active_module_lbl = QLabel("Dashboard — System Vitals")
+        self.active_module_lbl.setStyleSheet("font-weight: 600; font-size: 13px; color: #f1f5f9;")
         th_layout.addWidget(self.active_module_lbl)
 
         th_layout.addStretch()
 
-        self.live_beacon = LiveBeaconWidget("LIVE TELEMETRY // 1000ms", self)
+        self.live_beacon = LiveBeaconWidget("Telemetry Active • 1000ms", self)
         th_layout.addWidget(self.live_beacon)
 
         self.profile_switcher = ProfileSwitcherWidget(self)
@@ -213,7 +213,6 @@ class MainWindow(QMainWindow):
         self.nav_list.setCurrentRow(0)
 
     def _init_workers(self):
-        # Continuous System Monitor Worker for Dashboard & Auto-clean
         self.monitor_worker = SystemMonitorWorker(self)
         self.monitor_worker.data_signal.connect(self.dashboard_page.update_metrics)
         self.monitor_worker.auto_clean_signal.connect(self._on_auto_clean_triggered)
@@ -233,21 +232,20 @@ class MainWindow(QMainWindow):
     def _on_profile_changed(self, mode: str):
         if mode == "turbo":
             clean_ram()
-            self.toast.show_message("🚀 Turbo Boost Engaged", "Memory caches trimmed. High performance telemetry mode active.", level="success")
+            self.toast.show_message("Performance Profile", "Memory caches trimmed. Real-time telemetry active.", level="success")
         elif mode == "stealth":
-            self.toast.show_message("🍃 Stealth Silent Engaged", "Silent background telemetry profile active.", level="info")
+            self.toast.show_message("Eco Profile", "Throttled polling profile active.", level="info")
         else:
-            self.toast.show_message("⚡ Balanced Profile", "Standard balanced performance profile active.", level="info")
+            self.toast.show_message("Balanced Profile", "Standard balanced performance profile active.", level="info")
 
     def _on_page_changed(self, index: int):
         self.stack.setCurrentIndex(index)
         if 0 <= index < len(self.MODULES):
-            title, _ = self.MODULES[index]
-            clean_title = title.replace("  ", " ").strip().upper()
+            title, desc = self.MODULES[index]
             if hasattr(self, "active_module_lbl"):
-                self.active_module_lbl.setText(f"{clean_title} // ACTIVE")
+                self.active_module_lbl.setText(f"{title} — {desc}")
 
-        # Coordinate worker activity based on active tab to ensure near-zero idle CPU
+        # Coordinate worker activity based on active tab to maintain ~0% idle CPU
         if hasattr(self, "process_manager_page"):
             self.process_manager_page.set_active(index == 2)
         if hasattr(self, "ram_cleaner_page") and hasattr(self.ram_cleaner_page, "_worker") and self.ram_cleaner_page._worker:
@@ -276,7 +274,7 @@ class MainWindow(QMainWindow):
         self.show()
         self.raise_()
         self.activateWindow()
-        self.nav_list.setCurrentRow(3)  # Virus scan page
+        self.nav_list.setCurrentRow(3)
         self.virus_scanner_page._start_scan("quick")
 
     def _restore_from_tray(self):
@@ -295,7 +293,6 @@ class MainWindow(QMainWindow):
             self.hide()
             self.tray.show_notification(APP_NAME, "Application is running in the system tray.")
         else:
-            # Terminate background workers cleanly
             if hasattr(self, "monitor_worker"):
                 self.monitor_worker.stop()
             if hasattr(self, "process_manager_page"):

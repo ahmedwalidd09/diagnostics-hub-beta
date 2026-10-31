@@ -5,23 +5,133 @@ import psutil
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QSlider,
     QCheckBox, QTableWidget, QTableWidgetItem, QHeaderView, QFrame,
-    QMessageBox, QMenu
+    QMessageBox, QMenu, QTabWidget, QDialog, QTextEdit
 )
 from PyQt6.QtGui import QAction
 from PyQt6.QtCore import Qt
 from app.widgets.gauge_widget import GaugeWidget
 from app.widgets.sparkline_widget import SparklineWidget
+from app.widgets.ram_bubble_canvas import RamBubbleCanvas
+from app.widgets.severity_badge import SeverityBadge
 from app.workers.ram_clean_worker import RamCleanWorker
 from app.workers.ram_monitor_worker import RamMonitorWorker
 from app.settings_manager import settings
 from app.constants import COLOR_BG_CARD, COLOR_BORDER
+from app.utils.idle_ram_triage import analyze_resting_memory, execute_resting_triage_fix
+from app.utils.eco_qos import set_process_eco_qos, trim_process_working_set
+
+
+class RestingTriageDialog(QDialog):
+    """Dialog providing deep diagnostic insights on 90% idle RAM usage and 1-click remediation."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Resting Memory Triage Advisor")
+        self.resize(560, 420)
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #0f1117;
+                color: #f1f5f9;
+            }
+        """)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(14)
+
+        header = QLabel("Idle & Resting Memory Diagnostic Report")
+        header.setStyleSheet("font-size: 15px; font-weight: 600; color: #f1f5f9;")
+        layout.addWidget(header)
+
+        sub = QLabel("Analyzes why RAM usage remains high (~90%) even when the system is resting.")
+        sub.setObjectName("SubText")
+        layout.addWidget(sub)
+
+        self.report_area = QTextEdit()
+        self.report_area.setReadOnly(True)
+        self.report_area.setStyleSheet("""
+            QTextEdit {
+                background-color: #161922;
+                border: 1px solid #262a38;
+                border-radius: 6px;
+                color: #f1f5f9;
+                font-family: 'Segoe UI', sans-serif;
+                font-size: 12px;
+                padding: 10px;
+            }
+        """)
+        layout.addWidget(self.report_area)
+
+        # Buttons
+        btn_box = QHBoxLayout()
+        self.fix_btn = QPushButton("⚡ Execute Targeted Resting Fix")
+        self.fix_btn.setObjectName("PrimaryButton")
+        self.fix_btn.clicked.connect(self._on_execute_fix)
+        btn_box.addWidget(self.fix_btn)
+
+        close_btn = QPushButton("Close")
+        close_btn.clicked.connect(self.accept)
+        btn_box.addWidget(close_btn)
+        layout.addLayout(btn_box)
+
+        self._run_audit()
+
+    def _run_audit(self):
+        analysis = analyze_resting_memory()
+        findings = analysis.get("findings", [])
+
+        lines = [
+            f"<b>Physical RAM Utilization:</b> {analysis.get('current_ram_percent')}% "
+            f"({analysis.get('used_gb')} GB used of {analysis.get('total_gb')} GB)<br/>",
+            f"<b>Kernel Non-Paged Pool:</b> {analysis.get('kernel_nonpaged_mb')} MB<br/>",
+            f"<b>Kernel Paged Pool:</b> {analysis.get('kernel_paged_mb')} MB<br/>",
+            f"<b>Standby System Cache:</b> {analysis.get('system_cache_mb')} MB<br/>",
+            "<hr style='border: 1px solid #262a38;'/><br/>"
+        ]
+
+        if not findings:
+            lines.append("<b>Status:</b> No severe driver memory leaks or orphan browser background tasks detected.<br/>")
+        else:
+            lines.append("<b>Identified Idle Memory Drivers:</b><br/>")
+            for f in findings:
+                sev = f.get('severity', 'info').upper()
+                color = "#ef4444" if sev == "CRITICAL" else ("#f59e0b" if sev == "WARNING" else "#3b82f6")
+                lines.append(f"• <span style='color:{color}; font-weight:600;'>[{sev}] {f.get('title')}</span><br/>")
+                lines.append(f"  {f.get('description')}<br/><br/>")
+
+        potential = analysis.get("potential_freed_mb", 0.0)
+        if potential > 0:
+            lines.append(f"<b>Estimated Reclaimable Idle RAM:</b> ~{potential:.0f} MB<br/>")
+
+        self.report_area.setHtml("".join(lines))
+
+    def _on_execute_fix(self):
+        self.fix_btn.setEnabled(False)
+        self.fix_btn.setText("Optimizing...")
+        result = execute_resting_triage_fix()
+        freed = result.get("freed_mb", 0.0)
+        trimmed = result.get("trimmed_count", 0)
+        new_pct = result.get("new_ram_percent", 0.0)
+
+        QMessageBox.information(
+            self,
+            "Resting Optimization Complete",
+            f"Released {freed:.0f} MB of idle RAM.\n"
+            f"Trimmed and throttled {trimmed} background helper processes.\n"
+            f"New RAM utilization: {new_pct}%."
+        )
+        self.accept()
 
 
 class RamCleanerPage(QWidget):
     """
-    RAM Cleaner & Booster module with working-set trimming,
-    standby purge, top consumer trends, and 5-minute memory leak detection.
-    Processes are collected asynchronously by RamMonitorWorker to maintain 60 FPS GUI responsiveness.
+    RAM Cleaner & Memory Architecture Diagnostics workstation module.
+    Features:
+    - Interactive 2D Physics Bubble Canvas with Process Grouping
+    - Kernel Pool Telemetry (Non-Paged Pool & Driver Leak Inspection)
+    - Standby List and Modified Page Cache Flushers
+    - Monotonic 5-Minute Memory Leak Detector
+    - Idle Memory Triage Advisor
     """
 
     def __init__(self, parent=None):
@@ -29,133 +139,192 @@ class RamCleanerPage(QWidget):
         self.setObjectName("MainContent")
         self._worker = None
         self._clean_worker = None
+        self._latest_overview = {}
+        self._latest_top15 = []
+        self._latest_leaks = []
+        self._latest_grouped = []
 
         self._init_ui()
         self._start_worker()
 
     def _init_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setContentsMargins(18, 18, 18, 18)
         layout.setSpacing(14)
 
         # -------------------------------------------------------------
-        # TOP PANEL: RAM Overview & Clean Actions
+        # TOP PANEL: RAM Metrics & Multi-Stage Flush Controls
         # -------------------------------------------------------------
         top_card = QFrame()
         top_card.setObjectName("CardFrame")
         top_layout = QHBoxLayout(top_card)
-        top_layout.setContentsMargins(20, 16, 20, 16)
-        top_layout.setSpacing(24)
+        top_layout.setContentsMargins(18, 14, 18, 14)
+        top_layout.setSpacing(20)
 
         self.ram_gauge = GaugeWidget(title="RAM In Use", unit="%", min_value=0, max_value=100)
-        self.ram_gauge.setFixedSize(140, 140)
+        self.ram_gauge.setFixedSize(130, 130)
         top_layout.addWidget(self.ram_gauge)
 
+        # Middle column: Metrics & Kernel Pools
         v_info = QVBoxLayout()
-        v_info.setSpacing(6)
+        v_info.setSpacing(4)
+
         self.ram_stats_lbl = QLabel("Memory: Calculating...")
-        self.ram_stats_lbl.setStyleSheet("font-size: 16px; font-weight: bold; color: #ffffff;")
+        self.ram_stats_lbl.setStyleSheet("font-size: 15px; font-weight: 600; color: #ffffff;")
         v_info.addWidget(self.ram_stats_lbl)
 
-        self.swap_stats_lbl = QLabel("Pagefile: Calculating...")
+        self.swap_stats_lbl = QLabel("Commit Charge: Calculating...")
         self.swap_stats_lbl.setObjectName("SubText")
         v_info.addWidget(self.swap_stats_lbl)
 
-        # 5-minute Sparkline
-        spark_lbl = QLabel("5-Minute Memory Timeline:")
-        spark_lbl.setObjectName("SubText")
-        v_info.addWidget(spark_lbl)
-        self.sparkline = SparklineWidget(max_points=60, line_color="#00a8ff")
-        self.sparkline.setFixedHeight(40)
-        v_info.addWidget(self.sparkline)
-        top_layout.addLayout(v_info)
+        # Kernel Pool Telemetry
+        self.kernel_pools_lbl = QLabel("Kernel Pools: Paged: -- | Non-Paged: --")
+        self.kernel_pools_lbl.setObjectName("SubText")
+        v_info.addWidget(self.kernel_pools_lbl)
 
-        # Clean Action & Auto-Clean settings
+        # Sparkline Timeline
+        self.sparkline = SparklineWidget(max_points=60, line_color="#3b82f6")
+        self.sparkline.setFixedHeight(34)
+        v_info.addWidget(self.sparkline)
+        top_layout.addLayout(v_info, stretch=1)
+
+        # Right column: Clean Actions
         actions_box = QVBoxLayout()
-        actions_box.setSpacing(8)
-        self.clean_btn = QPushButton("🧹 Clean & Optimize RAM")
+        actions_box.setSpacing(6)
+
+        btn_row = QHBoxLayout()
+        self.clean_btn = QPushButton("🧹 Clean RAM")
         self.clean_btn.setObjectName("PrimaryButton")
-        self.clean_btn.setFixedHeight(38)
-        self.clean_btn.clicked.connect(self._start_clean)
-        actions_box.addWidget(self.clean_btn)
+        self.clean_btn.setFixedHeight(32)
+        self.clean_btn.clicked.connect(lambda: self._start_clean(deep=False))
+        btn_row.addWidget(self.clean_btn)
+
+        self.deep_clean_btn = QPushButton("⚡ Deep Flush")
+        self.deep_clean_btn.setObjectName("SecondaryButton")
+        self.deep_clean_btn.setToolTip("Purges Standby Cache and Modified Page List (requires admin)")
+        self.deep_clean_btn.setFixedHeight(32)
+        self.deep_clean_btn.clicked.connect(lambda: self._start_clean(deep=True))
+        btn_row.addWidget(self.deep_clean_btn)
+        actions_box.addLayout(btn_row)
+
+        self.triage_btn = QPushButton("🔍 Analyze Idle RAM (90% Idle Fix)")
+        self.triage_btn.setFixedHeight(30)
+        self.triage_btn.clicked.connect(self._open_resting_triage)
+        actions_box.addWidget(self.triage_btn)
 
         self.last_clean_lbl = QLabel("Ready to optimize memory.")
         self.last_clean_lbl.setObjectName("SubText")
         actions_box.addWidget(self.last_clean_lbl)
 
-        # Auto clean checkbox & threshold
-        self.autoclean_cb = QCheckBox("Auto-clean when RAM exceeds:")
+        # Auto-clean threshold
+        h_auto = QHBoxLayout()
+        self.autoclean_cb = QCheckBox("Auto-clean if >")
         self.autoclean_cb.setChecked(settings.get("ram_autoclean_enabled", False))
         self.autoclean_cb.toggled.connect(self._on_autoclean_toggled)
-        actions_box.addWidget(self.autoclean_cb)
+        h_auto.addWidget(self.autoclean_cb)
 
         thresh_val = int(settings.get("ram_autoclean_threshold", 85))
-        h_slider = QHBoxLayout()
         self.thresh_slider = QSlider(Qt.Orientation.Horizontal)
         self.thresh_slider.setRange(50, 95)
         self.thresh_slider.setValue(thresh_val)
         self.thresh_slider.valueChanged.connect(self._on_slider_changed)
-        h_slider.addWidget(self.thresh_slider)
+        h_auto.addWidget(self.thresh_slider)
 
         self.thresh_lbl = QLabel(f"{thresh_val}%")
-        self.thresh_lbl.setFixedWidth(35)
-        h_slider.addWidget(self.thresh_lbl)
-        actions_box.addLayout(h_slider)
+        self.thresh_lbl.setFixedWidth(30)
+        h_auto.addWidget(self.thresh_lbl)
+        actions_box.addLayout(h_auto)
 
         top_layout.addLayout(actions_box)
         layout.addWidget(top_card)
 
         # -------------------------------------------------------------
-        # MIDDLE: Top Memory Consumers Table
+        # TABS: Interactive Bubble Map vs Process Tables
         # -------------------------------------------------------------
+        self.tabs = QTabWidget(self)
+
+        # TAB 1: Bubble Canvas (Visual RAM Distribution)
+        tab_bubble = QWidget()
+        tb_layout = QVBoxLayout(tab_bubble)
+        tb_layout.setContentsMargins(8, 8, 8, 8)
+        tb_layout.setSpacing(6)
+
+        bubble_toolbar = QHBoxLayout()
+        lbl_info = QLabel("Process Memory Distribution (Bubble area indicates physical RAM consumption)")
+        lbl_info.setObjectName("SubText")
+        bubble_toolbar.addWidget(lbl_info)
+        bubble_toolbar.addStretch()
+
+        self.group_cb = QCheckBox("Group by Application (Stack subprocesses)")
+        self.group_cb.setChecked(True)
+        self.group_cb.toggled.connect(self._on_group_toggled)
+        bubble_toolbar.addWidget(self.group_cb)
+        tb_layout.addLayout(bubble_toolbar)
+
+        self.bubble_canvas = RamBubbleCanvas(self)
+        self.bubble_canvas.process_action_triggered.connect(self._on_bubble_action)
+        tb_layout.addWidget(self.bubble_canvas)
+
+        self.tabs.addTab(tab_bubble, "🫧 Memory Distribution (Bubble View)")
+
+        # TAB 2: Process Consumers & Leak Detector
+        tab_tables = QWidget()
+        tt_layout = QVBoxLayout(tab_tables)
+        tt_layout.setContentsMargins(8, 8, 8, 8)
+        tt_layout.setSpacing(8)
+
+        # Top Consumers
         consumers_bar = QHBoxLayout()
-        consumers_title = QLabel("Top 15 Memory Consuming Applications")
-        consumers_title.setStyleSheet("font-size: 14px; font-weight: bold; color: #ffffff;")
+        consumers_title = QLabel("Top Memory Consuming Processes")
+        consumers_title.setStyleSheet("font-size: 13px; font-weight: 600; color: #f1f5f9;")
         consumers_bar.addWidget(consumers_title)
         consumers_bar.addStretch()
 
-        self.btn_kill_consumer = QPushButton("🛑 End Selected Process")
+        self.btn_eco_consumer = QPushButton("🍃 Efficiency Mode")
+        self.btn_eco_consumer.clicked.connect(self._on_eco_selected_consumer)
+        consumers_bar.addWidget(self.btn_eco_consumer)
+
+        self.btn_kill_consumer = QPushButton("🛑 End Process")
         self.btn_kill_consumer.setObjectName("DestructiveButton")
-        self.btn_kill_consumer.setToolTip("Terminate the selected process immediately")
         self.btn_kill_consumer.clicked.connect(self._on_kill_selected_consumer)
         consumers_bar.addWidget(self.btn_kill_consumer)
-        layout.addLayout(consumers_bar)
+        tt_layout.addLayout(consumers_bar)
 
         self.table = QTableWidget(0, 5, self)
-        self.table.setHorizontalHeaderLabels(["Application Name", "PID", "RAM Usage (MB)", "% of Total System RAM", "Trend"])
+        self.table.setHorizontalHeaderLabels(["Application Name", "PID", "RAM Usage (MB)", "% of System RAM", "Trend"])
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         self.table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.table.customContextMenuRequested.connect(self._show_consumer_context_menu)
-        self.table.setFixedHeight(210)
-        layout.addWidget(self.table)
+        self.table.setFixedHeight(180)
+        tt_layout.addWidget(self.table)
 
-        # -------------------------------------------------------------
-        # BOTTOM: Memory Leak Detector Table
-        # -------------------------------------------------------------
+        # Leak Detector
         leak_bar = QHBoxLayout()
-        leak_title = QLabel("⚠️ Suspected Memory Leaks (Monotonic growth >50% over 5 mins)")
-        leak_title.setStyleSheet("font-size: 14px; font-weight: bold; color: #d29922;")
+        leak_title = QLabel("Suspected Memory Leaks (Monotonic growth >50% over 5 mins)")
+        leak_title.setStyleSheet("font-size: 13px; font-weight: 600; color: #f59e0b;")
         leak_bar.addWidget(leak_title)
         leak_bar.addStretch()
 
         self.btn_kill_leak = QPushButton("🛑 End Leaking Process")
         self.btn_kill_leak.setObjectName("DestructiveButton")
-        self.btn_kill_leak.setToolTip("Terminate the suspected memory leaking process")
         self.btn_kill_leak.clicked.connect(self._on_kill_selected_leak)
         leak_bar.addWidget(self.btn_kill_leak)
-        layout.addLayout(leak_bar)
+        tt_layout.addLayout(leak_bar)
 
         self.leak_table = QTableWidget(0, 5, self)
-        self.leak_table.setHorizontalHeaderLabels(["Process Name", "PID", "Current RAM (MB)", "RAM 5 Min Ago", "Growth Rate (MB/min)"])
+        self.leak_table.setHorizontalHeaderLabels(["Process Name", "PID", "Current RAM (MB)", "RAM 5 Min Ago", "Growth Rate"])
         self.leak_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         self.leak_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.leak_table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         self.leak_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.leak_table.customContextMenuRequested.connect(self._show_leak_context_menu)
         self.leak_table.setFixedHeight(120)
-        layout.addWidget(self.leak_table)
+        tt_layout.addWidget(self.leak_table)
+
+        self.tabs.addTab(tab_tables, "📋 Process Tables & Leaks")
+        layout.addWidget(self.tabs)
 
     def _start_worker(self):
         self._worker = RamMonitorWorker(self)
@@ -176,6 +345,24 @@ class RamCleanerPage(QWidget):
         if self._worker:
             self._worker.set_active(False)
 
+    def _on_group_toggled(self, checked: bool):
+        self.bubble_canvas.set_grouped_mode(checked)
+        self.bubble_canvas.update_data(self._latest_top15, self._latest_grouped)
+
+    def _on_bubble_action(self, action: str, pid: int):
+        if action == "trim":
+            self.last_clean_lbl.setText(f"Trimmed working set of PID {pid}.")
+        elif action == "eco_on":
+            self.last_clean_lbl.setText(f"Enabled Efficiency Mode on PID {pid}.")
+        elif action == "eco_off":
+            self.last_clean_lbl.setText(f"Disabled Efficiency Mode on PID {pid}.")
+        elif action == "kill":
+            self.last_clean_lbl.setText(f"Terminated PID {pid}.")
+
+    def _open_resting_triage(self):
+        dlg = RestingTriageDialog(self)
+        dlg.exec()
+
     def _on_autoclean_toggled(self, checked: bool):
         settings.set("ram_autoclean_enabled", checked)
 
@@ -183,43 +370,66 @@ class RamCleanerPage(QWidget):
         self.thresh_lbl.setText(f"{val}%")
         settings.set("ram_autoclean_threshold", float(val))
 
-    def _start_clean(self):
+    def _start_clean(self, deep: bool = False):
         self.clean_btn.setEnabled(False)
-        self.last_clean_lbl.setText("Trimming working sets and purging cache...")
-        self._clean_worker = RamCleanWorker(self)
+        self.deep_clean_btn.setEnabled(False)
+        self.last_clean_lbl.setText("Flushing memory..." if deep else "Trimming working sets...")
+        self._clean_worker = RamCleanWorker(deep_flush=deep, parent=self)
         self._clean_worker.cleaning_finished_signal.connect(self._on_clean_finished)
         self._clean_worker.start()
 
     def _on_clean_finished(self, result: dict):
         self.clean_btn.setEnabled(True)
+        self.deep_clean_btn.setEnabled(True)
         freed_mb = result.get("freed_mb", 0.0)
         freed_gb = result.get("freed_gb", 0.0)
         trimmed = result.get("trimmed_processes", 0)
         standby = result.get("standby_purged", False)
+        modified = result.get("modified_purged", False)
 
-        msg = f"✅ Freed {freed_gb:.2f} GB ({freed_mb:.0f} MB) of RAM across {trimmed} processes."
+        msg = f"Released {freed_gb:.2f} GB ({freed_mb:.0f} MB) across {trimmed} processes."
         if standby:
-            msg += " Standby list purged."
+            msg += " Standby cache purged."
+        if modified:
+            msg += " Modified pages flushed."
         self.last_clean_lbl.setText(msg)
-        QMessageBox.information(self, "RAM Cleaned", msg)
+        QMessageBox.information(self, "Memory Optimized", msg)
 
-    def _on_ram_data(self, overview: dict, top15: list, leaking_procs: list):
-        """Update RAM widgets and tables in-place without GUI freezes."""
+    def _on_ram_data(self, overview: dict, top_consumers: list, leaking_procs: list, grouped_consumers: list):
+        self._latest_overview = overview
+        self._latest_top15 = top_consumers
+        self._latest_leaks = leaking_procs
+        self._latest_grouped = grouped_consumers
+
         pct = overview.get("percent", 0.0)
         self.ram_gauge.set_value(pct)
         self.sparkline.add_point(pct)
+
         self.ram_stats_lbl.setText(
             f"{overview.get('used_gb', 0)} GB used / {overview.get('total_gb', 0)} GB total "
             f"({overview.get('available_gb', 0)} GB available)"
         )
+
+        commit_total = overview.get("commit_total_gb", overview.get("swap_used_gb", 0))
+        commit_limit = overview.get("commit_limit_gb", overview.get("swap_total_gb", 0))
         self.swap_stats_lbl.setText(
-            f"Swap / Pagefile: {overview.get('swap_used_gb', 0)} GB used ({overview.get('swap_percent', 0)}%)"
+            f"Commit Charge: {commit_total} GB / {commit_limit} GB ({overview.get('commit_percent', overview.get('swap_percent', 0))}%)"
         )
 
-        # 1. Update Top 15 consumers table in-place
-        self._update_consumers_table(top15)
+        npp = overview.get("kernel_nonpaged_mb", 0.0)
+        pp = overview.get("kernel_paged_mb", 0.0)
+        sc = overview.get("system_cache_mb", 0.0)
+        npp_warn = " ⚠️ High Non-Paged Pool" if overview.get("nonpaged_warning") else ""
 
-        # 2. Update Suspected Memory Leaks table in-place
+        self.kernel_pools_lbl.setText(
+            f"Kernel Pools: Paged: {pp:.0f} MB | Non-Paged: {npp:.0f} MB{npp_warn} | Standby Cache: {sc:.0f} MB"
+        )
+
+        # Update Bubble Canvas
+        self.bubble_canvas.update_data(top_consumers, grouped_consumers)
+
+        # Update Tables in-place
+        self._update_consumers_table(top_consumers[:15])
         self._update_leaks_table(leaking_procs)
 
     def _update_consumers_table(self, top15: list):
@@ -349,10 +559,19 @@ class RamCleanerPage(QWidget):
             return
 
         menu = QMenu(self)
+        act_trim = QAction("🧹 Trim Working Set", self)
+        act_eco = QAction("🍃 Enable Efficiency Mode (EcoQoS)", self)
         act_kill = QAction(f"🛑 End Process ({proc_name})", self)
         act_kill_tree = QAction("⚡ End Process Tree", self)
+
+        act_trim.triggered.connect(lambda: trim_process_working_set(pid))
+        act_eco.triggered.connect(lambda: set_process_eco_qos(pid, True))
         act_kill.triggered.connect(lambda: self._kill_process(pid, proc_name, tree=False))
         act_kill_tree.triggered.connect(lambda: self._kill_process(pid, proc_name, tree=True))
+
+        menu.addAction(act_trim)
+        menu.addAction(act_eco)
+        menu.addSeparator()
         menu.addAction(act_kill)
         menu.addAction(act_kill_tree)
         menu.exec(self.table.viewport().mapToGlobal(pos))
@@ -381,10 +600,27 @@ class RamCleanerPage(QWidget):
         menu.addAction(act_kill_tree)
         menu.exec(self.leak_table.viewport().mapToGlobal(pos))
 
+    def _on_eco_selected_consumer(self):
+        row = self.table.currentRow()
+        if row < 0:
+            QMessageBox.information(self, "Select Process", "Please select a process from the table first.")
+            return
+        pid_item = self.table.item(row, 1)
+        name_item = self.table.item(row, 0)
+        if pid_item and name_item:
+            try:
+                pid = int(pid_item.text())
+                if set_process_eco_qos(pid, True):
+                    QMessageBox.information(self, "Efficiency Mode Enabled", f"Efficiency Mode (EcoQoS) enabled for {name_item.text()} (PID {pid}).")
+                else:
+                    QMessageBox.warning(self, "Action Failed", f"Unable to set Efficiency Mode on PID {pid}.")
+            except ValueError:
+                pass
+
     def _on_kill_selected_consumer(self):
         row = self.table.currentRow()
         if row < 0:
-            QMessageBox.information(self, "Select Process", "Please click to select a process from the table first.")
+            QMessageBox.information(self, "Select Process", "Please select a process from the table first.")
             return
         name_item = self.table.item(row, 0)
         pid_item = self.table.item(row, 1)
@@ -400,7 +636,7 @@ class RamCleanerPage(QWidget):
     def _on_kill_selected_leak(self):
         row = self.leak_table.currentRow()
         if row < 0:
-            QMessageBox.information(self, "Select Process", "Please click to select a process from the leak table first.")
+            QMessageBox.information(self, "Select Process", "Please select a process from the leak table first.")
             return
         name_item = self.leak_table.item(row, 0)
         pid_item = self.leak_table.item(row, 1)

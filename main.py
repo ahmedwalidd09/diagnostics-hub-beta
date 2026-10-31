@@ -45,65 +45,54 @@ logger = logging.getLogger("DiagnosticsHub")
 
 
 def create_splash_pixmap() -> QPixmap:
-    """Render a sleek Cyber Stealth splash screen graphic (Black, Red, Blue)."""
-    pix = QPixmap(500, 270)
-    pix.fill(QColor("#07080c"))
+    """Render a clean, professional workstation splash screen graphic."""
+    pix = QPixmap(500, 260)
+    pix.fill(QColor("#0f1117"))
     painter = QPainter(pix)
     painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
     # Outer border
-    painter.setPen(QColor("#1a2130"))
-    painter.drawRect(0, 0, 499, 269)
+    painter.setPen(QColor("#262a38"))
+    painter.drawRect(0, 0, 499, 259)
 
-    # Accent Top Header Bar (Crimson to Electric Blue)
-    grad = QLinearGradient(0, 0, 500, 0)
-    grad.setColorAt(0.0, QColor("#ff2a51"))
-    grad.setColorAt(0.5, QColor("#00d2ff"))
-    grad.setColorAt(1.0, QColor("#00a8ff"))
-    painter.fillRect(0, 0, 500, 4, grad)
+    # Accent Top Header Bar
+    painter.fillRect(0, 0, 500, 3, QColor("#3b82f6"))
 
-    # Icon Hexagon/Circle Badge
-    painter.setBrush(QColor("#0d1017"))
-    painter.setPen(QPen(QColor("#00a8ff"), 2))
-    painter.drawEllipse(32, 45, 62, 62)
+    # Icon Circle Badge
+    painter.setBrush(QColor("#161922"))
+    painter.setPen(QPen(QColor("#262a38"), 1.5))
+    painter.drawEllipse(32, 42, 58, 58)
 
     # Icon symbol
-    painter.setPen(QColor("#00d2ff"))
-    painter.setFont(QFont("Segoe UI", 26, QFont.Weight.Bold))
-    painter.drawText(32, 45, 62, 62, Qt.AlignmentFlag.AlignCenter, "⚡")
+    painter.setPen(QColor("#3b82f6"))
+    painter.setFont(QFont("Segoe UI", 24, QFont.Weight.DemiBold))
+    painter.drawText(32, 42, 58, 58, Qt.AlignmentFlag.AlignCenter, "⚙")
 
-    # App Title & Cyber Subtitle
-    painter.setPen(QColor("#ffffff"))
-    painter.setFont(QFont("Segoe UI", 18, QFont.Weight.Bold))
-    painter.drawText(112, 70, APP_NAME.upper())
+    # App Title & Subtitle
+    painter.setPen(QColor("#f1f5f9"))
+    painter.setFont(QFont("Segoe UI", 17, QFont.Weight.Bold))
+    painter.drawText(106, 66, APP_NAME)
 
-    painter.setPen(QColor("#ff2a51"))
-    painter.setFont(QFont("Segoe UI", 10, QFont.Weight.Bold))
-    painter.drawText(112, 92, "CYBER STEALTH // x64 ARCHITECTURE")
-
-    painter.setPen(QColor("#828d9e"))
-    painter.setFont(QFont("Segoe UI", 10, QFont.Weight.Normal))
-    painter.drawText(112, 110, f"v{APP_VERSION} • Real-Time Diagnostics & Optimization Subsystem")
+    painter.setPen(QColor("#94a3b8"))
+    painter.setFont(QFont("Segoe UI", 10, QFont.Weight.Medium))
+    painter.drawText(106, 88, f"Workstation Telemetry & Control Subsystem • v{APP_VERSION}")
 
     # Loading status text
-    painter.setPen(QColor("#00d2ff"))
-    painter.setFont(QFont("Segoe UI", 10, QFont.Weight.DemiBold))
-    painter.drawText(32, 195, "Initializing kernel monitors and hardware telemetry...")
+    painter.setPen(QColor("#94a3b8"))
+    painter.setFont(QFont("Segoe UI", 10))
+    painter.drawText(32, 175, "Initializing kernel diagnostics and hardware monitors...")
 
-    # Cyber Progress Bar Line
-    painter.setPen(QPen(QColor("#1a2130"), 3))
-    painter.drawLine(32, 215, 468, 215)
+    # Clean Progress Bar Line
+    painter.setPen(QPen(QColor("#1e222e"), 3))
+    painter.drawLine(32, 195, 468, 195)
 
-    bar_grad = QLinearGradient(32, 0, 340, 0)
-    bar_grad.setColorAt(0.0, QColor("#ff2a51"))
-    bar_grad.setColorAt(1.0, QColor("#00a8ff"))
-    painter.setPen(QPen(bar_grad, 3))
-    painter.drawLine(32, 215, 340, 215)
+    painter.setPen(QPen(QColor("#3b82f6"), 3))
+    painter.drawLine(32, 195, 320, 195)
 
     # Footer note
-    painter.setPen(QColor("#828d9e"))
+    painter.setPen(QColor("#64748b"))
     painter.setFont(QFont("Segoe UI", 9))
-    painter.drawText(32, 240, "Engineered with PyQt6 & Python 3.11+ • 60 FPS Native Pipeline")
+    painter.drawText(32, 230, "Native PyQt6 • Low-overhead threading architecture")
 
     painter.end()
     return pix

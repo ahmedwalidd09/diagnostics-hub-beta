@@ -1,6 +1,6 @@
 import logging
 from PyQt6.QtCore import QThread, pyqtSignal
-from app.utils.ram_api import clean_ram
+from app.utils.ram_api import clean_ram, deep_clean_ram
 from app.database import db
 
 logger = logging.getLogger(__name__)
@@ -13,12 +13,17 @@ class RamCleanWorker(QThread):
     """
     cleaning_finished_signal = pyqtSignal(dict)
 
-    def __init__(self, parent=None):
+    def __init__(self, deep_flush: bool = False, parent=None):
         super().__init__(parent)
+        self._deep_flush = deep_flush
 
     def run(self):
         try:
-            result = clean_ram()
+            if self._deep_flush:
+                result = deep_clean_ram()
+            else:
+                result = clean_ram()
+
             # Record baseline in SQLite
             db.record_memory_baseline(
                 total_mb=result.get("before_available_mb", 0) + result.get("freed_mb", 0),
@@ -35,5 +40,6 @@ class RamCleanWorker(QThread):
                 "freed_gb": 0.0,
                 "trimmed_processes": 0,
                 "standby_purged": False,
+                "modified_purged": False,
                 "error": str(e)
             })

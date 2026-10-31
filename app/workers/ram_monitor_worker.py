@@ -3,17 +3,18 @@ import psutil
 import logging
 from collections import deque
 from PyQt6.QtCore import QThread, pyqtSignal
+from app.utils.ram_api import get_kernel_performance_info
 
 logger = logging.getLogger(__name__)
 
 
 class RamMonitorWorker(QThread):
     """
-    Dedicated background worker for RAM telemetry, top memory consumers,
-    and 5-minute memory leak detection.
-    Completely isolates all process iterations from the GUI thread.
+    Dedicated background worker for RAM telemetry, kernel pool inspection,
+    top memory consumers, application grouping, and memory leak detection.
+    Completely isolates all process iterations and Win32 queries from the GUI thread.
     """
-    ram_data_signal = pyqtSignal(dict, list, list)  # (overview, top_consumers, leaking_procs)
+    ram_data_signal = pyqtSignal(dict, list, list, list)  # (overview, top_consumers, leaking_procs, grouped_consumers)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -42,7 +43,7 @@ class RamMonitorWorker(QThread):
             try:
                 now = time.time()
 
-                # 1. Virtual memory & Swap
+                # 1. Virtual memory, Swap & Deep Kernel Performance Information
                 vmem = psutil.virtual_memory()
                 try:
                     swap = psutil.swap_memory()
@@ -54,6 +55,7 @@ class RamMonitorWorker(QThread):
                     swap = DummySwap()
 
                 total_ram_mb = max(1.0, vmem.total / (1024 * 1024))
+                kernel_info = get_kernel_performance_info()
 
                 overview = {
                     "percent": vmem.percent,
@@ -62,18 +64,22 @@ class RamMonitorWorker(QThread):
                     "available_gb": round(vmem.available / (1024 ** 3), 1),
                     "swap_used_gb": round(swap.used / (1024 ** 3), 1),
                     "swap_total_gb": round(swap.total / (1024 ** 3), 1),
-                    "swap_percent": swap.percent
+                    "swap_percent": swap.percent,
+                    **kernel_info
                 }
 
-                # 2. Iterate processes for top consumers and memory leaks
+                # 2. Iterate processes for top consumers, leak detector, and grouping
                 procs = []
-                for p in psutil.process_iter(['pid', 'name', 'memory_info']):
+                groups = {}  # proc_name_lower -> {"name": display_name, "pids": [], "ram_mb": 0.0}
+
+                for p in psutil.process_iter(['pid', 'name', 'memory_info', 'exe']):
                     if not self._running:
                         break
                     try:
                         info = p.info
                         pid = info['pid']
                         name = info['name'] or f"PID {pid}"
+                        exe_path = info.get('exe') or ""
                         mem_info = info.get('memory_info')
                         rss = mem_info.rss if mem_info else 0
                         rss_mb = round(rss / (1024 * 1024), 1)
@@ -97,13 +103,31 @@ class RamMonitorWorker(QThread):
                             self._leak_buffers[pid] = deque(maxlen=10)
                         self._leak_buffers[pid].append((now, rss_mb))
 
-                        procs.append({
+                        proc_entry = {
                             "name": name,
                             "pid": pid,
                             "ram_mb": rss_mb,
                             "pct": (rss_mb / total_ram_mb) * 100.0,
-                            "trend": trend_arrow
-                        })
+                            "trend": trend_arrow,
+                            "path": exe_path
+                        }
+                        procs.append(proc_entry)
+
+                        # Group by executable name
+                        key = name.lower()
+                        if key not in groups:
+                            groups[key] = {
+                                "name": name,
+                                "pids": [pid],
+                                "ram_mb": rss_mb,
+                                "count": 1,
+                                "path": exe_path
+                            }
+                        else:
+                            groups[key]["pids"].append(pid)
+                            groups[key]["ram_mb"] = round(groups[key]["ram_mb"] + rss_mb, 1)
+                            groups[key]["count"] += 1
+
                     except (psutil.NoSuchProcess, psutil.AccessDenied):
                         continue
 
@@ -112,12 +136,17 @@ class RamMonitorWorker(QThread):
                 self._history_30s = {pid: v for pid, v in self._history_30s.items() if pid in active_pids}
                 self._leak_buffers = {pid: v for pid, v in self._leak_buffers.items() if pid in active_pids}
 
-                # Sort top 15 consumers
+                # Sort processes by memory
                 procs.sort(key=lambda x: x["ram_mb"], reverse=True)
-                top15 = procs[:15]
+                top_procs = procs[:40]
+
+                # Grouped list
+                grouped_list = list(groups.values())
+                for g in grouped_list:
+                    g["pct"] = (g["ram_mb"] / total_ram_mb) * 100.0
+                grouped_list.sort(key=lambda x: x["ram_mb"], reverse=True)
 
                 # Check for suspected memory leaks
-                # Condition: Monotonic growth >50% over window, current > 200MB
                 leaking_procs = []
                 for p in procs:
                     pid = p["pid"]
@@ -140,13 +169,13 @@ class RamMonitorWorker(QThread):
 
                 leaking_procs.sort(key=lambda x: x["growth_rate"], reverse=True)
 
-                self.ram_data_signal.emit(overview, top15, leaking_procs)
+                self.ram_data_signal.emit(overview, top_procs, leaking_procs, grouped_list)
 
             except Exception as e:
                 logger.error(f"Error in RamMonitorWorker: {e}")
 
-            # Sleep: 3s when active, 10s when inactive/background
-            sleep_ticks = 30 if self._active else 100
+            # Sleep: 2.5s when active, 10s when inactive/background
+            sleep_ticks = 25 if self._active else 100
             for _ in range(sleep_ticks):
                 if not self._running:
                     break
