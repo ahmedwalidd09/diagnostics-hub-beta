@@ -115,12 +115,19 @@ def save_telegram_credentials(bot_token: str, chat_id: str) -> bool:
         return False
 
 
-def send_telegram_access_request(bot_token: str, chat_id: str) -> tuple[bool, str]:
+def send_telegram_access_request(node_id: str = "", bot_token: str = "", chat_id: str = "") -> tuple[bool, str]:
     """Send access request notification to admin's Telegram chat."""
+    if not node_id:
+        node_id = get_short_node_id()
+
+    if not bot_token or not chat_id:
+        def_token, def_chat = get_telegram_credentials()
+        bot_token = bot_token or def_token
+        chat_id = chat_id or def_chat
+
     if not bot_token or not chat_id:
         return False, "Telegram Bot Token or Chat ID is not configured."
 
-    node_id = get_short_node_id()
     hostname = socket.gethostname()
     username = os.environ.get("USERNAME", "Unknown")
 
@@ -153,15 +160,23 @@ def send_telegram_access_request(bot_token: str, chat_id: str) -> tuple[bool, st
         return False, f"Network error sending Telegram request: {e}"
 
 
-def check_telegram_approval(bot_token: str, chat_id: str, entered_pin: str = "") -> tuple[bool, str]:
+def check_telegram_approval(node_id: str = "", bot_token: str = "", chat_id: str = "", entered_pin: str = "") -> tuple[bool, str]:
     """
     Poll recent Telegram updates from the authorized chat_id for approval of this Node ID.
     Supports either explicit entered PIN matching or auto-approving if admin replied with PIN.
     """
+    if not node_id:
+        node_id = get_short_node_id()
+    node_id = node_id.upper()
+
+    if not bot_token or not chat_id:
+        def_token, def_chat = get_telegram_credentials()
+        bot_token = bot_token or def_token
+        chat_id = chat_id or def_chat
+
     if not bot_token or not chat_id:
         return False, "Telegram credentials missing."
 
-    node_id = get_short_node_id().upper()
     url = f"https://api.telegram.org/bot{bot_token}/getUpdates?offset=-25"
 
     try:
@@ -188,14 +203,14 @@ def check_telegram_approval(bot_token: str, chat_id: str, entered_pin: str = "")
                     if target_node == node_id:
                         if entered_pin:
                             if entered_pin.strip() == target_pin:
-                                whitelist_current_machine(entered_pin)
-                                return True, "PIN verified! Machine whitelisted permanently."
+                                whitelist_current_machine(entered_pin.strip())
+                                return True, target_pin
                             else:
                                 return False, "Entered PIN does not match admin's approved code."
                         else:
                             # Auto-approval without retyping
                             whitelist_current_machine(target_pin)
-                            return True, f"Admin approved code {target_pin}! Machine whitelisted."
+                            return True, target_pin
 
             if entered_pin:
                 return False, f"No approval found in Telegram for {node_id}. Ensure you replied '/approve {node_id} {entered_pin}'."

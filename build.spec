@@ -11,6 +11,7 @@ a = Analysis(
     binaries=[],
     datas=[
         ('data', 'data'),
+        ('app/assets', 'app/assets'),
     ],
     hiddenimports=[
         'PyQt6',

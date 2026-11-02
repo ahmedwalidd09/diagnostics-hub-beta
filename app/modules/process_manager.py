@@ -10,6 +10,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor, QBrush, QAction
 from app.widgets.search_bar import SearchBar
 from app.workers.process_list_worker import ProcessListWorker
+from app.utils.process_utils import kill_process_with_fallback
 
 
 class NumericTableWidgetItem(QTableWidgetItem):
@@ -420,25 +421,7 @@ class ProcessManagerPage(QWidget):
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )
         if reply == QMessageBox.StandardButton.Yes:
-            killed = False
-            try:
-                p = psutil.Process(pid)
-                if tree:
-                    for child in p.children(recursive=True):
-                        try:
-                            child.kill()
-                        except Exception:
-                            pass
-                p.kill()
-                killed = True
-            except Exception:
-                pass
-
-            if not killed:
-                cmd = f"taskkill /F /PID {pid}" + (" /T" if tree else "")
-                res = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-                if res.returncode == 0:
-                    killed = True
+            killed = kill_process_with_fallback(pid, tree=tree)
 
             if killed:
                 QMessageBox.information(self, "Process Terminated", f"Successfully terminated {proc_name} (PID {pid}).")

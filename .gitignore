@@ -27,6 +27,7 @@ scratch_test_*.py
 .pytest_cache/
 .coverage
 htmlcov/
+.agents/
 
 # IDE configs
 .idea/

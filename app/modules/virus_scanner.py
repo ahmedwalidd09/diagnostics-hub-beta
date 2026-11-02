@@ -8,7 +8,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 from app.widgets.severity_badge import SeverityBadge
 from app.workers.virus_scan_worker import VirusScanWorker
-from app.constants import COLOR_BG_CARD, COLOR_BORDER
+from app.constants import COLOR_BG_CARD, COLOR_BORDER, COLOR_ACCENT_BLUE
 
 
 class VirusScannerPage(QWidget):
@@ -122,13 +122,13 @@ class VirusScannerPage(QWidget):
 
         # Bottom Summary Bar
         self.summary_bar = QLabel("Scanned: 0 | Threats found: 0 | Clean: 0")
-        self.summary_bar.setStyleSheet("""
+        self.summary_bar.setStyleSheet(f"""
             background-color: #0d1017;
             border: 1px solid #1a2130;
             border-radius: 6px;
             padding: 8px 14px;
             font-weight: 600;
-            color: #00d2ff;
+            color: {COLOR_ACCENT_BLUE};
         """)
         layout.addWidget(self.summary_bar)
 

@@ -7,7 +7,7 @@ from PyQt6.QtCore import Qt
 from app.workers.disk_scan_worker import DiskScanWorker
 from app.workers.disk_clean_worker import DiskCleanWorker
 from app.utils.system_info import is_admin
-from app.constants import COLOR_BG_CARD, COLOR_BORDER
+from app.constants import COLOR_BG_CARD, COLOR_BORDER, COLOR_ACCENT_BLUE
 
 
 def format_size(bytes_val: int) -> str:
@@ -78,7 +78,7 @@ class DiskCleanupPage(QWidget):
         s_layout.setContentsMargins(16, 12, 16, 12)
 
         self.reclaimable_lbl = QLabel("Total Reclaimable Space: Calculating...")
-        self.reclaimable_lbl.setStyleSheet("font-size: 15px; font-weight: bold; color: #00d2ff;")
+        self.reclaimable_lbl.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {COLOR_ACCENT_BLUE};")
         s_layout.addWidget(self.reclaimable_lbl)
         s_layout.addStretch()
 

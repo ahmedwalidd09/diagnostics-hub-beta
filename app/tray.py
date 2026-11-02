@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import QSystemTrayIcon, QMenu
 from PyQt6.QtGui import QIcon, QPixmap, QPainter, QColor
 from PyQt6.QtCore import pyqtSignal, QObject
-from app.constants import APP_NAME
+from app.constants import APP_NAME, COLOR_ACCENT_BLUE, COLOR_TEXT_PRIMARY
 
 
 def create_tray_pixmap() -> QPixmap:
@@ -10,13 +10,13 @@ def create_tray_pixmap() -> QPixmap:
     pix.fill(QColor(0, 0, 0, 0))
     painter = QPainter(pix)
     painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-    # Outer cyber crimson ring
+    # Outer ring
     painter.setBrush(QColor("#07080c"))
-    painter.setPen(QColor("#ff2a51"))
+    painter.setPen(QColor(COLOR_TEXT_PRIMARY))
     painter.drawEllipse(2, 2, 28, 28)
-    # Inner electric blue core
-    painter.setBrush(QColor("#00a8ff"))
-    painter.setPen(QColor("#00d2ff"))
+    # Inner blue core
+    painter.setBrush(QColor(COLOR_ACCENT_BLUE))
+    painter.setPen(QColor(COLOR_ACCENT_BLUE))
     painter.drawEllipse(10, 10, 12, 12)
     painter.end()
     return pix
@@ -36,22 +36,22 @@ class SystemTray(QObject):
         self.tray_icon.setToolTip(APP_NAME)
 
         self._menu = QMenu()
-        self._menu.setStyleSheet("""
-            QMenu {
+        self._menu.setStyleSheet(f"""
+            QMenu {{
                 background-color: #07080c;
                 color: #f0f6fc;
                 border: 1px solid #1a2130;
                 border-radius: 6px;
                 padding: 4px;
-            }
-            QMenu::item {
+            }}
+            QMenu::item {{
                 padding: 6px 20px;
                 border-radius: 4px;
-            }
-            QMenu::item:selected {
-                background-color: #00a8ff;
+            }}
+            QMenu::item:selected {{
+                background-color: {COLOR_ACCENT_BLUE};
                 color: #ffffff;
-            }
+            }}
         """)
 
         act_open = self._menu.addAction("🖥️ Open Hub")

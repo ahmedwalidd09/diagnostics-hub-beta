@@ -12,7 +12,7 @@ from app.utils.registry_utils import (
     toggle_task_scheduler_entry
 )
 from app.database import db
-from app.constants import COLOR_BG_CARD, COLOR_BORDER
+from app.constants import COLOR_BG_CARD, COLOR_BORDER, COLOR_ACCENT_BLUE
 
 
 class StartupManagerPage(QWidget):
@@ -95,13 +95,13 @@ class StartupManagerPage(QWidget):
 
         # Bottom info bar
         self.info_bar = QLabel("Loading startup items...")
-        self.info_bar.setStyleSheet("""
+        self.info_bar.setStyleSheet(f"""
             background-color: #0d1017;
             border: 1px solid #1a2130;
             border-radius: 6px;
             padding: 8px 14px;
             font-weight: 600;
-            color: #00d2ff;
+            color: {COLOR_ACCENT_BLUE};
         """)
         layout.addWidget(self.info_bar)
 
